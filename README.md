@@ -117,6 +117,8 @@ mkdir -p objs/lib
     --with-http_ssl_module \
 	--with-http_auth_request_module
 ```
+此时编译，只能在当前目录下运行nginx
+
 7. 执行如下命令进行编译:
 ```shell
 make -j 10
@@ -166,7 +168,7 @@ make
 ```
 
 ### 修改nginx配置文件
-可以参考example_config/example_nginx_config.conf进行修改。
+可以参考example_config/example_nginx_config.conf进行修改。该文件中将将日志文件按照日期进行拆分.
 
 14. 打开nginx.conf文件继续编辑
 15. 如果是debug版本，则通过如下配置来打开调试日志进行调试（第8行）
@@ -231,3 +233,34 @@ access_log  logs/access.log  main;
         }
 ```
 
+## 安装
+
+执行如下命令安装nginx
+
+```shell
+sudo make install
+```
+
+* nginx的可执行文件被安装到/usr/local/bin
+* nginx的日志和配置文件目录会被安装到/usr/local/nginx目录下
+
+## 使用systemctl启动nginx服务
+
+1. 使用管理员将nginx.servce拷贝到/etc/systemd/system目录下
+2. 修改文件权限
+```shell
+chmod +x nginx.service
+```
+3. 启动
+```shell
+systemctl daemon-reload
+systemctl enable nginx.service
+systemctl start nginx.service
+```
+
+4. 重新加载和停止
+
+```shell
+systemctl restart nginx.service
+systemctl stop nginx.service
+```

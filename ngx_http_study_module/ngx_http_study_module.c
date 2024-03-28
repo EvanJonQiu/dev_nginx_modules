@@ -264,15 +264,23 @@ ngx_http_study_handler(ngx_http_request_t *r) {
     // TODO: We should consider that if token is not tail of the header
     u_char* begin = (u_char*)ngx_strstr(data->value.data, "token=");
     if (begin != NULL) {
-      ngx_str_t v;
-      ngx_str_null(&v);
+      u_char* token_cursor = begin + 6;
+      u_char* token_end = data->value.data + data->value.len;
 
-      v.data = begin + 6;
-      v.len = data->value.len - (begin - data->value.data) - 6;
+      while (token_cursor != token_end && *(char*)token_cursor != ';') {
+        token_cursor++;
+      }
 
-      ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "get token length: %d", v.len);
+      ngx_str_t vv;
+      ngx_str_null(&vv);
 
-      ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "get token data: %V", &v);
+      vv.len = token_cursor - (begin + 6);
+      vv.data = ngx_pcalloc(r->pool, vv.len);
+      ngx_memcpy(vv.data, begin + 6, vv.len);
+
+      ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "get token length: %d", vv.len);
+
+      ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "get token data: %V", &vv);
         
       jwt_t *jwt = NULL;
 
@@ -288,9 +296,23 @@ ngx_http_study_handler(ngx_http_request_t *r) {
       }
 
       // verify token
-      if (jwt_decode(&jwt, (char*)v.data, decoded_data, size)) {
+      if (jwt_decode(&jwt, (char*)vv.data, decoded_data, size)) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "JWT: failed to parse jwt");
-        return NGX_DECLINED;
+        
+        r->headers_out.status = NGX_HTTP_UNAUTHORIZED;
+
+        ngx_table_elt_t *h;
+
+        h = ngx_list_push(&r->headers_out.headers);
+        if (h == NULL) {
+          return NGX_ERROR;
+        }
+        
+        r->headers_out.www_authenticate = h;
+        
+        h->hash = 1;
+        h->next = NULL;
+        return NGX_HTTP_UNAUTHORIZED;
       } else {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "JWT: parse ok");
 
